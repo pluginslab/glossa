@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build & bundle (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select the newest Xcode
+        run: |
+          XCODE="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          swift --version
+
+      - name: Build (debug and release)
+        run: |
+          swift build
+          swift build -c release
+
+      - name: Bundle (ad-hoc signed) and verify
+        run: |
+          GLOSSA_SIGN_IDENTITY=- scripts/bundle.sh
+          codesign --verify --verbose Glossa.app
+          plutil -lint Glossa.app/Contents/Info.plist
+
+      - name: Release gate
+        run: |
+          V="$(cat VERSION)"
+          grep -q "^## \[$V\]" CHANGELOG.md || { echo "CHANGELOG.md has no entry for $V"; exit 1; }

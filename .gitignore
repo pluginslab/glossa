@@ -1,0 +1,5 @@
+.build/
+dist/
+Glossa.app
+*.xcodeproj
+.DS_Store
