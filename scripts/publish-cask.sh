@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 VERSION="$(cat VERSION)"
 SHA="$(awk '{print $1}' "dist/Glossa-$VERSION.dmg.sha256")"
 TAP_DIR="${TAP_DIR:-$HOME/localdev/homebrew-tap}"
-[[ -d "$TAP_DIR/.git" ]] || git clone -q git@github.com:pluginslab/homebrew-tap.git "$TAP_DIR"
+[[ -d "$TAP_DIR/.git" ]] || git clone -q https://github.com/pluginslab/homebrew-tap.git "$TAP_DIR"
 git -C "$TAP_DIR" pull -q --ff-only
 
 mkdir -p "$TAP_DIR/Casks"
