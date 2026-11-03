@@ -17,6 +17,10 @@ struct Config: Codable {
     var sounds = true
     /// Ignore recordings shorter than this (seconds), to swallow accidental taps.
     var minSeconds = 0.4
+    /// Lower the output volume by this many percentage points while recording. 0 disables it.
+    var duckPercent = 10
+    /// Only duck when something is actually playing on the output device.
+    var duckOnlyIfPlaying = true
     /// Log every Fn, key and media-key event to ~/Library/Logs/glossa.log.
     var debug = false
     /// Virtual key code of the keyboard's microphone/dictation key (176 on Apple keyboards). 0 = disabled.
@@ -35,6 +39,8 @@ struct Config: Codable {
         contextChars = try c.decodeIfPresent(Int.self, forKey: .contextChars) ?? contextChars
         sounds = try c.decodeIfPresent(Bool.self, forKey: .sounds) ?? sounds
         minSeconds = try c.decodeIfPresent(Double.self, forKey: .minSeconds) ?? minSeconds
+        duckPercent = try c.decodeIfPresent(Int.self, forKey: .duckPercent) ?? duckPercent
+        duckOnlyIfPlaying = try c.decodeIfPresent(Bool.self, forKey: .duckOnlyIfPlaying) ?? duckOnlyIfPlaying
         debug = try c.decodeIfPresent(Bool.self, forKey: .debug) ?? debug
         micKeyCode = try c.decodeIfPresent(Int.self, forKey: .micKeyCode) ?? micKeyCode
     }

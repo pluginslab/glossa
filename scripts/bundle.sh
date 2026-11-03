@@ -37,6 +37,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Glossa"
 [[ -f Resources/AppIcon.icns ]] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+# Ships inside the app so DMG and Homebrew users can set up the local server without a checkout.
+cp scripts/install-server.sh "$APP/Contents/Resources/install-server.sh"
+chmod +x "$APP/Contents/Resources/install-server.sh"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

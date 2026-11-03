@@ -28,8 +28,8 @@ fi
 
 command -v brew >/dev/null || { echo "Homebrew is required: https://brew.sh" >&2; exit 1; }
 if ! command -v whisper-server >/dev/null; then
-    echo "==> brew install whisper-cpp"
-    brew install whisper-cpp
+    echo "==> brew install whisper.cpp"
+    brew install whisper.cpp
 fi
 SERVER="$(command -v whisper-server)"
 

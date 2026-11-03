@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.0] - 2026-11-03
+- New: music ducks while you dictate. If something is playing on the output device when recording starts, Glossa lowers the system volume by `duckPercent` points (default 10) and restores it when recording stops, unless you moved the volume in the meantime. `duckOnlyIfPlaying: false` ducks always; `duckPercent: 0` disables it.
+- New: Homebrew. `brew install --cask pluginslab/tap/glossa` installs the app and whisper-cpp, and links `glossa-server`, which sets up the local Whisper launch agent. The same script now ships inside the app at `Glossa.app/Contents/Resources/install-server.sh` for DMG users.
+
 ## [0.1.0] - 2026-11-03
 - First release. A menu-bar app that takes over the Mac's dictation key and sends what you say to a Whisper server, with a glossary and the text before your cursor as the prompt, so technical terms come out spelled right.
 - Triggers: the microphone key (F5) to start and stop, or hold it for push-to-talk; Fn double-tap or hold as an alternative. The mic key press is swallowed before macOS sees it, so Apple's "enable Dictation?" dialog never appears.

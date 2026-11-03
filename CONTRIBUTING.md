@@ -26,6 +26,7 @@ Sources/Glossa/
   FnKeyMonitor.swift  CGEvent tap: mic key (code 176) and Fn (code 63) -> tap / toggle / holdStart / holdEnd
   Recorder.swift      AVAudioEngine -> 16 kHz mono Int16 WAV in memory
   Context.swift       glossary + Accessibility text before the cursor -> Whisper prompt
+  AudioDucker.swift   Core Audio: lower the output volume while recording if something is playing, restore after
   Transcriber.swift   multipart POST to any OpenAI-style transcription endpoint
   Inserter.swift      pasteboard + synthetic ⌘V, pasteboard restored afterwards
   Config.swift        ~/.config/glossa/config.json and glossary.txt
@@ -54,6 +55,9 @@ There is no Xcode project; `swift build` is the whole build.
    `docs/releases/x.y.z.md`.
 2. `scripts/release.sh` builds, signs, notarizes and staples `dist/Glossa-x.y.z.dmg`.
 3. Tag `vx.y.z` and attach the DMG and its `.sha256` to the GitHub release.
+4. `scripts/publish-cask.sh` updates `Casks/glossa.rb` in
+   [pluginslab/homebrew-tap](https://github.com/pluginslab/homebrew-tap) with the new
+   version and checksum and pushes it.
 
 ## Pull requests
 

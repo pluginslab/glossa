@@ -34,20 +34,24 @@ so nothing about how you dictate changes except the result.
 
 ## Install
 
-Download the latest **Glossa DMG** from
-[Releases](https://github.com/pluginslab/glossa/releases/latest), open it, and drag Glossa
-to Applications. It is a signed and notarized universal build for **macOS 14** or later.
-
-Then give it something to talk to. The default is whisper.cpp's `whisper-server` on your
-own Mac, kept warm as a launch agent:
+With Homebrew, app and server in two commands:
 
 ```bash
-git clone https://github.com/pluginslab/glossa.git
-glossa/scripts/install-server.sh     # brew install whisper-cpp, downloads large-v3-turbo (~550 MB), starts the agent
+brew install --cask pluginslab/tap/glossa   # the app, plus whisper.cpp
+glossa-server                               # downloads large-v3-turbo (~550 MB), starts the launch agent on 127.0.0.1:8178
 ```
 
-Or skip that and point Glossa at a server you already have (see
-[Remote servers](#remote-servers)).
+Or download the latest **Glossa DMG** from
+[Releases](https://github.com/pluginslab/glossa/releases/latest), drag Glossa to
+Applications, and run the same server setup from inside the app:
+
+```bash
+/Applications/Glossa.app/Contents/Resources/install-server.sh
+```
+
+Both are the same signed and notarized universal build for **macOS 14** or later. The
+server is whisper.cpp's `whisper-server`, kept warm as a launch agent. You can skip it and
+point Glossa at a server you already have (see [Remote servers](#remote-servers)).
 
 macOS asks for two permissions the first time each is needed:
 
@@ -73,6 +77,11 @@ And two keyboard settings, so Apple's own dictation stops answering the key:
 
 The result lands a second or so after you stop, as if pasted. The text that was on your
 clipboard is put back afterwards.
+
+If music is playing when you start, the system volume drops by 10 points for the length of
+the recording and comes back when you stop. Nothing happens when the output is silent, and
+a volume you changed yourself in the meantime is left alone (`duckPercent`,
+`duckOnlyIfPlaying`).
 
 The menu-bar icon is a mic when idle, a red mic while recording, and an ellipsis while
 transcribing. The menu has *Start Recording* for mouse-only use, the glossary, the config,
@@ -112,6 +121,8 @@ glossary is sent. `"useContext": false` turns it off.
 | `sounds` | `true` | start / done / error sounds |
 | `minSeconds` | `0.4` | shorter recordings are dropped |
 | `micKeyCode` | `176` | the microphone key's code; `0` disables it |
+| `duckPercent` | `10` | lower the output volume by this many points while recording; `0` disables it |
+| `duckOnlyIfPlaying` | `true` | only when something is playing on the output device |
 | `debug` | `false` | log Fn and special-key events |
 
 ### Remote servers

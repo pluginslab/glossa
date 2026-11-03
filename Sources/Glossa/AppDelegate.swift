@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let monitor = FnKeyMonitor()
     private let recorder = Recorder()
+    private let ducker = AudioDucker()
     private var config = Config()
     private var contextBefore: String?
     private var stateMenuItem: NSMenuItem!
@@ -67,10 +68,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         config = Config.load()
         applyMonitorConfig()
         contextBefore = config.useContext ? Context.textBeforeCursor(maxChars: config.contextChars) : nil
+        // Before the recorder starts, so a combined input/output device (headset) is not mistaken for playback.
+        ducker.duck(byPercent: config.duckPercent, onlyIfPlaying: config.duckOnlyIfPlaying)
         do {
             try recorder.start()
         } catch {
             Log.write("recorder failed: \(error)")
+            ducker.restore()
             sound("Basso")
             return
         }
@@ -80,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func stopAndTranscribe() {
         let (wav, seconds) = recorder.stop()
+        ducker.restore()
         guard seconds >= config.minSeconds else {
             Log.write("ignored \(String(format: "%.2f", seconds))s recording")
             setState(.idle)
