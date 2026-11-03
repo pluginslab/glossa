@@ -14,9 +14,9 @@
 
 </div>
 
-You press the dictation key, say "restart the vLLM container on megamaschine and check
-the Tailscale MagicDNS entry", and macOS types *"restart the VLLM container on Megamachine
-and check the TailScale Magic DNS entry"*. Every time. There is no way to teach Apple's
+You press the dictation key, say "redeploy the Next.js app with pnpm and check the
+PostgreSQL logs in Grafana", and macOS types *"redeploy the next JS app with PNPM and check
+the Postgres SQL logs in Grafana"*. Every time. There is no way to teach Apple's
 dictation a word.
 
 Whisper can be taught. It takes a short **prompt** before the audio, and anything in that
@@ -26,8 +26,8 @@ and punctuates what follows. Glossa builds that prompt on every dictation: your
 Accessibility from whatever app you are in. Then it sends the audio to a Whisper server,
 local by default, and types the answer where you were.
 
-Same sentence, same model, with Glossa's prompt: *"restart the vLLM container on
-megamaschine and check the Tailscale MagicDNS entry"*.
+Same sentence, same model, with Glossa's prompt: *"redeploy the Next.js app with pnpm
+and check the PostgreSQL logs in Grafana"*.
 
 It lives in the menu bar, and it takes over the **microphone key** (F5 on Apple keyboards),
 so nothing about how you dictate changes except the result.
