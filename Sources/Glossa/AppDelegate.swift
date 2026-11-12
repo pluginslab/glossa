@@ -13,7 +13,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var contextBefore: String?
     private var stateMenuItem: NSMenuItem!
     private var toggleMenuItem: NSMenuItem!
+    private var serverMenuItem: NSMenuItem!
+    private var fallbackMenuItem: NSMenuItem!
     private var accessibilityPrompted = false
+
+    /// Menu choice to send everything to the fallback server (a laptop that knows it is offline).
+    private var preferFallback: Bool {
+        get { UserDefaults.standard.bool(forKey: "preferFallback") }
+        set { UserDefaults.standard.set(newValue, forKey: "preferFallback") }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.write("--- Glossa launched")
@@ -67,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startRecording(pushToTalk: Bool) {
         config = Config.load()
         applyMonitorConfig()
+        refreshServerItems()
         contextBefore = config.useContext ? Context.textBeforeCursor(maxChars: config.contextChars) : nil
         // Before the recorder starts, so a combined input/output device (headset) is not mistaken for playback.
         ducker.duck(byPercent: config.duckPercent, onlyIfPlaying: config.duckOnlyIfPlaying)
@@ -93,12 +102,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setState(.transcribing)
         let prompt = Context.prompt(glossary: Config.loadGlossary(), before: contextBefore)
         let transcriber = Transcriber(config: config)
+        let preferFallback = preferFallback
         let started = Date()
         Task { @MainActor in
             do {
-                let raw = try await transcriber.transcribe(wav: wav, prompt: prompt)
+                let (raw, server) = try await transcriber.transcribe(wav: wav, prompt: prompt, preferFallback: preferFallback)
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Log.write("transcribed \(String(format: "%.1f", seconds))s in \(ms) ms: \(raw.trimmingCharacters(in: .whitespacesAndNewlines))")
+                Log.write("transcribed \(String(format: "%.1f", seconds))s in \(ms) ms via \(server.role) \(server.label): \(raw.trimmingCharacters(in: .whitespacesAndNewlines))")
+                lastServer = server
                 insert(raw)
                 sound("Tink")
             } catch {
@@ -122,6 +133,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - UI
+
+    private var lastServer: Server? { didSet { refreshServerItems() } }
+
+    /// The "Server:" line and the fallback toggle, from the current config and the last answer.
+    private func refreshServerItems() {
+        let t = Transcriber(config: config)
+        if let fb = t.fallback {
+            fallbackMenuItem.isHidden = false
+            fallbackMenuItem.state = preferFallback ? .on : .off
+            let answered = lastServer.map { " · last: \($0.role)" } ?? ""
+            serverMenuItem.title = preferFallback
+                ? "Server: \(fb.label) (fallback, chosen)\(answered)"
+                : "Server: \(t.primary.label), fallback \(fb.label)\(answered)"
+        } else {
+            fallbackMenuItem.isHidden = true
+            serverMenuItem.title = "Server: \(t.primary.label)"
+        }
+    }
 
     private func setState(_ s: State) {
         state = s
@@ -166,6 +195,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toggleMenuItem.target = self
         menu.addItem(toggleMenuItem)
         menu.addItem(.separator())
+        serverMenuItem = NSMenuItem(title: "Server", action: nil, keyEquivalent: "")
+        serverMenuItem.isEnabled = false
+        menu.addItem(serverMenuItem)
+        fallbackMenuItem = item("Use Fallback Server", #selector(toggleFallback))
+        menu.addItem(fallbackMenuItem)
+        refreshServerItems()
+        menu.addItem(.separator())
         menu.addItem(item("Edit Glossary…", #selector(openGlossary)))
         menu.addItem(item("Edit Config…", #selector(openConfig)))
         menu.addItem(item("Open Log", #selector(openLog)))
@@ -186,6 +222,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .recording: stopAndTranscribe()
         case .transcribing: break
         }
+    }
+    @objc private func toggleFallback() {
+        preferFallback.toggle()
+        Log.write("fallback server \(preferFallback ? "chosen" : "automatic")")
+        refreshServerItems()
     }
     @objc private func openGlossary() { NSWorkspace.shared.open(Config.glossaryURL) }
     @objc private func openConfig() { NSWorkspace.shared.open(Config.configURL) }

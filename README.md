@@ -115,6 +115,10 @@ glossary is sent. `"useContext": false` turns it off.
 | `endpoint` | `http://127.0.0.1:8178/inference` | any OpenAI-style transcription endpoint |
 | `apiKey` | `""` | sent as a Bearer token when set |
 | `model` | `whisper-1` | the `model` form field; whisper-server ignores it, routers use it |
+| `fallbackEndpoint` | `""` | a second server, used when `endpoint` fails or when *Use Fallback Server* is checked in the menu |
+| `fallbackApiKey` | `""` | its key |
+| `fallbackModel` | `whisper-1` | its model name |
+| `primaryTimeout` | `10` | seconds of silence from `endpoint` before the fallback is tried |
 | `language` | `en` | Whisper language code; `auto` works but costs ~0.5 s per request |
 | `useContext` | `true` | read the text before the cursor |
 | `contextChars` | `300` | how much of it |
@@ -139,9 +143,27 @@ The request is the OpenAI `/v1/audio/transcriptions` shape (`file`, `model`, `pr
 Latency on an M-series Mac with the local server and large-v3-turbo is about 0.6 s per
 sentence; the prompt itself costs almost nothing.
 
-Plain `http://` to another machine works from 0.2.1 on (0.2.0 could only reach
-127.0.0.1 without TLS). On a laptop that roams, prefer the server's Tailscale address
-over its LAN address, so dictation works wherever you are.
+Plain `http://` to another machine works from 0.3.0 on (earlier versions could only
+reach 127.0.0.1 without TLS). On a laptop that roams, prefer the server's Tailscale
+address over its LAN address, so dictation works wherever you are.
+
+**Two servers.** The usual setup on a laptop is a GPU box as `endpoint` and the local
+whisper-server as the fallback:
+
+```json
+{
+  "endpoint": "http://100.x.y.z:7576/v1/audio/transcriptions",
+  "apiKey": "sk-…",
+  "model": "transcribe",
+  "fallbackEndpoint": "http://127.0.0.1:8178/inference"
+}
+```
+
+When the GPU box does not answer within `primaryTimeout` seconds, or fails for any other
+reason, the same recording goes to the fallback and the log says so. The menu shows
+both servers and which one answered last. *Use Fallback Server* sends everything to the
+fallback until you uncheck it, for when you know you are offline and would rather not
+wait for the timeout.
 
 ## How it works
 
@@ -159,7 +181,7 @@ type into every app without being an input method. Details in
 - **Live preview.** Whisper does not stream, but re-transcribing the audio so far every
   second or two and showing the interim text in a small floating window is cheap on Apple
   silicon. The final paste stays as it is.
-- A menu toggle between two endpoints (local / remote) and a per-app language override.
+- A per-app language override.
 
 ## Build
 

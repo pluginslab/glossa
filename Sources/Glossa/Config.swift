@@ -7,6 +7,14 @@ struct Config: Codable {
     var apiKey = ""
     /// Model field in the request. whisper-server ignores it; llm-router routes on it.
     var model = "whisper-1"
+    /// A second server, used when `endpoint` fails (laptop off the network, server down) or
+    /// when "Use Fallback Server" is checked in the menu. Typically the local whisper-server
+    /// when `endpoint` is a GPU box on the network. Empty disables it.
+    var fallbackEndpoint = ""
+    var fallbackApiKey = ""
+    var fallbackModel = "whisper-1"
+    /// Seconds of silence from `endpoint` before the fallback is tried (only with a fallback set).
+    var primaryTimeout = 10.0
     /// Whisper language code. "auto" works but costs an extra encoder pass (~0.5 s) per request.
     var language = "en"
     /// Read the text before the cursor via Accessibility and feed it to Whisper as context.
@@ -34,6 +42,10 @@ struct Config: Codable {
         endpoint = try c.decodeIfPresent(String.self, forKey: .endpoint) ?? endpoint
         apiKey = try c.decodeIfPresent(String.self, forKey: .apiKey) ?? apiKey
         model = try c.decodeIfPresent(String.self, forKey: .model) ?? model
+        fallbackEndpoint = try c.decodeIfPresent(String.self, forKey: .fallbackEndpoint) ?? fallbackEndpoint
+        fallbackApiKey = try c.decodeIfPresent(String.self, forKey: .fallbackApiKey) ?? fallbackApiKey
+        fallbackModel = try c.decodeIfPresent(String.self, forKey: .fallbackModel) ?? fallbackModel
+        primaryTimeout = try c.decodeIfPresent(Double.self, forKey: .primaryTimeout) ?? primaryTimeout
         language = try c.decodeIfPresent(String.self, forKey: .language) ?? language
         useContext = try c.decodeIfPresent(Bool.self, forKey: .useContext) ?? useContext
         contextChars = try c.decodeIfPresent(Int.self, forKey: .contextChars) ?? contextChars
@@ -52,36 +64,29 @@ struct Config: Codable {
     static let defaultGlossary = """
     # One term per line. Lines starting with # are ignored.
     # These are sent to Whisper as vocabulary so it spells them right.
-    vLLM
-    megamaschine
-    sparkmaschine
-    supermaschine
-    llm-router
-    LiteLLM
-    Tailscale
-    MagicDNS
-    Codeable
-    Pluginslab
-    WordPress
-    Gutenberg
-    Cloudflare
-    Lucas PM
-    Claude Code
-    Whisper
-    whisper.cpp
+    # Replace them with your own: product names, hostnames, acronyms, colleagues.
+    kubectl
+    nginx
+    PostgreSQL
+    Grafana
+    Next.js
+    pnpm
+    GitHub
     Homebrew
     launchd
-    Ploi
-    DigitalOcean
-    Outline
-    Synology
+    Tailscale
+    Cloudflare
+    WordPress
+    Gutenberg
     Xcode
     SwiftUI
     Astro
     Tailwind
-    Nemotron
-    Gemma
-    Qwen
+    Whisper
+    whisper.cpp
+    LiteLLM
+    vLLM
+    Claude Code
     MCP
     """
 
