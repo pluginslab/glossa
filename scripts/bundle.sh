@@ -61,6 +61,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSMicrophoneUsageDescription</key><string>Glossa records your voice while you dictate and sends it to the Whisper server you configured.</string>
+    <!-- The endpoint is often plain HTTP on a LAN or tailnet address (a Whisper server on
+         another machine). App Transport Security exempts 127.0.0.1 but not those, so
+         without this every remote http:// endpoint fails with "requires a secure connection". -->
+    <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/></dict>
 </dict>
 </plist>
 PLIST

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.2.1] - 2026-11-12
+- Fixed: a plain `http://` endpoint on another machine (a Whisper server on your LAN or tailnet, llm-router, Speaches) failed every transcription with "App Transport Security policy requires the use of a secure connection", and the error sound played after each recording. Only 127.0.0.1 was exempt. The app now allows those connections; `https://` endpoints are unaffected.
+
 ## [0.2.0] - 2026-11-03
 - New: music ducks while you dictate. If something is playing on the output device when recording starts, Glossa lowers the system volume by `duckPercent` points (default 10) and restores it when recording stops, unless you moved the volume in the meantime. `duckOnlyIfPlaying: false` ducks always; `duckPercent: 0` disables it.
 - New: Homebrew. `brew install --cask pluginslab/tap/glossa` installs the app and whisper-cpp, and links `glossa-server`, which sets up the local Whisper launch agent. The same script now ships inside the app at `Glossa.app/Contents/Resources/install-server.sh` for DMG users.

@@ -139,6 +139,10 @@ The request is the OpenAI `/v1/audio/transcriptions` shape (`file`, `model`, `pr
 Latency on an M-series Mac with the local server and large-v3-turbo is about 0.6 s per
 sentence; the prompt itself costs almost nothing.
 
+Plain `http://` to another machine works from 0.2.1 on (0.2.0 could only reach
+127.0.0.1 without TLS). On a laptop that roams, prefer the server's Tailscale address
+over its LAN address, so dictation works wherever you are.
+
 ## How it works
 
 A session-wide CGEvent tap watches for the microphone key (it arrives as an ordinary key
