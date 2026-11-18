@@ -69,11 +69,18 @@ And two keyboard settings, so Apple's own dictation stops answering the key:
 
 | Do this | Glossa |
 | --- | --- |
-| Press the **microphone key** | starts recording (pop); press again to stop and transcribe (tink) |
+| Press the **microphone key** | starts recording; press again to stop and transcribe |
 | **Hold** the microphone key | push-to-talk: records while held, transcribes on release |
 | **Double-tap Fn** | starts; any Fn tap stops |
 | **Hold Fn** | push-to-talk |
 | Fn + another key | ignored, so forward-delete and Fn-arrows still work |
+| **Shift** + any of the above | a voice command: what you say becomes one shell command (below) |
+
+Each moment has its own short sound, all from one family: notes rise when recording starts
+and fall when it stops; dictation has a soft tone and voice commands a brighter one; a high
+chord means the text or command is in, a low falling interval means something failed, a
+rising one that the model asked a question, two equal notes a command worth checking, and a
+quiet tick that the recording was too short or silent. `"sounds": false` turns them off.
 
 The result lands a second or so after you stop, as if pasted. The text that was on your
 clipboard is put back afterwards.
@@ -83,9 +90,43 @@ the recording and comes back when you stop. Nothing happens when the output is s
 a volume you changed yourself in the meantime is left alone (`duckPercent`,
 `duckOnlyIfPlaying`).
 
-The menu-bar icon is a mic when idle, a red mic while recording, and an ellipsis while
-transcribing. The menu has *Start Recording* for mouse-only use, the glossary, the config,
+The menu-bar icon is a mic when idle, a red mic while recording (a red terminal for a voice
+command), and an ellipsis while transcribing. The menu has *Start Recording* for mouse-only use, the glossary, the config,
 and the log.
+
+### Voice commands
+
+Hold **Shift** while you press the microphone key (or while you hold or double-tap Fn) and
+say what you want done: "show me the five biggest files here", "restart the nginx
+container", "check out the branch from the last commit". Glossa transcribes it, sends the
+request to a chat model with what it can see of the terminal, and pastes back **one
+command, without Return**. You read it and press return yourself; nothing ever runs on its
+own.
+
+The context sent with the request: the frontmost app and its window title (Terminal and
+iTerm2 put the folder or the ssh host there), the last 30 lines of the screen where the app
+exposes them through Accessibility, and this Mac's host name, user and login shell. When
+the screen shows an ssh session, the command is written for that machine.
+
+It is one round. If the request is unclear or would mean guessing a path it can't see, the
+model asks a short question instead, shown in a notice at the top of the screen. Commands
+that delete files, use `sudo`, write to disks, force-push, reset or kill processes are
+pasted with a warning in the same notice. *Start Voice Command* in the menu does the same
+for mouse-only use.
+
+**Your setup.** `~/.config/glossa/setup.txt` (*Edit Setup Notes…* in the menu) is sent
+with every voice command: your servers and their ssh aliases, where projects live, your
+shell helpers, which tools you prefer. Plain text, `#` lines ignored, read on every
+command. With "web1 is the production box (ssh web1), the app runs in docker as app-web" in
+it, "restart the app on production" becomes `ssh web1 'docker restart app-web'`. Keep
+secrets out of it; it goes to the model.
+
+It needs an OpenAI-style `/v1/chat/completions` endpoint. When `endpoint` is a
+`/v1/audio/transcriptions` URL (llm-router, LiteLLM), the chat URL next to it is used with
+the same key, so often nothing needs configuring; otherwise set `assistEndpoint`. The key
+must be allowed to use `assistModel` (default `code`): a router key scoped to transcription
+only needs a second key in `assistApiKey`. The prompt is the one Smart Terminal's voice
+commands use.
 
 ### The glossary
 
@@ -128,6 +169,9 @@ glossary is sent. `"useContext": false` turns it off.
 | `duckPercent` | `10` | lower the output volume by this many points while recording; `0` disables it |
 | `duckOnlyIfPlaying` | `true` | only when something is playing on the output device |
 | `debug` | `false` | log Fn and special-key events |
+| `assistEndpoint` | `""` | chat completions URL for voice commands; empty derives it from `endpoint` |
+| `assistApiKey` | `""` | its key; empty uses `apiKey` |
+| `assistModel` | `code` | the model (router alias) that writes the command |
 
 ### Remote servers
 

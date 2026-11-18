@@ -4,9 +4,10 @@ import AppKit
 /// Mic key: single press -> .toggle, hold -> .holdStart/.holdEnd; the event is swallowed so Apple's
 /// Dictation never sees it. Fn: double-tap -> .toggle, hold -> push-to-talk, single tap -> .tap.
 /// A Fn press combined with another key (Fn+Backspace, Fn+arrow) emits nothing.
+/// Shift held when the key goes down marks the action as a voice command (`command: true`).
 final class FnKeyMonitor {
     /// .tap: a single Fn tap. .toggle: Fn double-tap or a single microphone-key press.
-    enum Action { case tap, toggle, holdStart, holdEnd }
+    enum Action: Equatable { case tap, toggle(command: Bool), holdStart(command: Bool), holdEnd }
     enum Source { case fn, micKey }
 
     var onAction: ((Action) -> Void)?
@@ -20,6 +21,9 @@ final class FnKeyMonitor {
     private var holding = false
     private var holdTimer: Timer?
     private var lastTapAt: Date?
+    /// Shift was down when the current press started (or at the first tap of a Fn double-tap).
+    private var shiftAtPress = false
+    private var shiftAtLastTap = false
 
     private let doubleTapWindow: TimeInterval = 0.4
     private let holdThreshold: TimeInterval = 0.35
@@ -73,7 +77,7 @@ final class FnKeyMonitor {
             if debug, keycode >= 96 { Log.write("\(type == .keyDown ? "keyDown" : "keyUp") keycode=\(keycode) flags=\(event.flags.rawValue)") }
             if micKeyCode != 0, keycode == micKeyCode {
                 let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-                if type == .keyDown { if !isRepeat { keyDown(.micKey) } } else { keyUp(.micKey) }
+                if type == .keyDown { if !isRepeat { keyDown(.micKey, shift: event.flags.contains(.maskShift)) } } else { keyUp(.micKey) }
                 return true
             }
             if type == .keyDown, fnDownAt != nil { otherKeyDuringFn = true; cancelHold() }
@@ -87,7 +91,7 @@ final class FnKeyMonitor {
             if fnDownAt != nil { otherKeyDuringFn = true; cancelHold() }
             return false
         }
-        if event.flags.contains(.maskSecondaryFn) { keyDown(.fn) } else { keyUp(.fn) }
+        if event.flags.contains(.maskSecondaryFn) { keyDown(.fn, shift: event.flags.contains(.maskShift)) } else { keyUp(.fn) }
         return false
     }
 
@@ -101,16 +105,17 @@ final class FnKeyMonitor {
         return false
     }
 
-    private func keyDown(_ source: Source) {
+    private func keyDown(_ source: Source, shift: Bool) {
         guard fnDownAt == nil else { return }
         activeSource = source
+        shiftAtPress = shift
         fnDownAt = Date()
         otherKeyDuringFn = false
         holding = false
         holdTimer = Timer.scheduledTimer(withTimeInterval: holdThreshold, repeats: false) { [weak self] _ in
             guard let self, self.fnDownAt != nil, !self.otherKeyDuringFn else { return }
             self.holding = true
-            self.emit(.holdStart)
+            self.emit(.holdStart(command: self.shiftAtPress))
         }
     }
 
@@ -125,15 +130,16 @@ final class FnKeyMonitor {
         }
         if otherKeyDuringFn { return }
         if source == .micKey {
-            emit(.toggle)
+            emit(.toggle(command: shiftAtPress))
             return
         }
         let now = Date()
         if let last = lastTapAt, now.timeIntervalSince(last) < doubleTapWindow {
             lastTapAt = nil
-            emit(.toggle)
+            emit(.toggle(command: shiftAtPress || shiftAtLastTap))
         } else {
             lastTapAt = now
+            shiftAtLastTap = shiftAtPress
             emit(.tap)
         }
     }

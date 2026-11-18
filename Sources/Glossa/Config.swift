@@ -33,6 +33,13 @@ struct Config: Codable {
     var debug = false
     /// Virtual key code of the keyboard's microphone/dictation key (176 on Apple keyboards). 0 = disabled.
     var micKeyCode = 176
+    /// Voice commands (Shift with the mic key or Fn): an OpenAI-style chat completions URL.
+    /// Empty: derived from `endpoint` when it is a `/v1/audio/transcriptions` URL (llm-router).
+    var assistEndpoint = ""
+    /// Bearer token for `assistEndpoint`. Empty: `apiKey` is used.
+    var assistApiKey = ""
+    /// Model for voice commands (an llm-router alias).
+    var assistModel = "code"
 
     init() {}
 
@@ -55,11 +62,28 @@ struct Config: Codable {
         duckOnlyIfPlaying = try c.decodeIfPresent(Bool.self, forKey: .duckOnlyIfPlaying) ?? duckOnlyIfPlaying
         debug = try c.decodeIfPresent(Bool.self, forKey: .debug) ?? debug
         micKeyCode = try c.decodeIfPresent(Int.self, forKey: .micKeyCode) ?? micKeyCode
+        assistEndpoint = try c.decodeIfPresent(String.self, forKey: .assistEndpoint) ?? assistEndpoint
+        assistApiKey = try c.decodeIfPresent(String.self, forKey: .assistApiKey) ?? assistApiKey
+        assistModel = try c.decodeIfPresent(String.self, forKey: .assistModel) ?? assistModel
     }
 
     static let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/glossa")
     static let configURL = dir.appendingPathComponent("config.json")
     static let glossaryURL = dir.appendingPathComponent("glossary.txt")
+    /// Notes about your machines and habits, sent with every voice command.
+    static let setupURL = dir.appendingPathComponent("setup.txt")
+
+    static let defaultSetup = """
+    # Notes about your setup, sent with every voice command (Shift + mic key) so the
+    # command can use your real hosts, aliases and habits. Plain text, any shape.
+    # Lines starting with # are ignored. Keep secrets out: this goes to the model.
+    #
+    # Examples:
+    # Servers: "web1" is the production box (Ubuntu 24.04, ssh web1), "nas" is a Synology.
+    # Docker runs on web1; the app containers are named app-web and app-db.
+    # I use pnpm, not npm. Projects live in ~/code/<name>.
+    # Prefer rg over grep and eza over ls.
+    """
 
     static let defaultGlossary = """
     # One term per line. Lines starting with # are ignored.
@@ -100,6 +124,9 @@ struct Config: Codable {
         if !fm.fileExists(atPath: glossaryURL.path) {
             try? defaultGlossary.write(to: glossaryURL, atomically: true, encoding: .utf8)
         }
+        if !fm.fileExists(atPath: setupURL.path) {
+            try? defaultSetup.write(to: setupURL, atomically: true, encoding: .utf8)
+        }
     }
 
     static func load() -> Config {
@@ -109,6 +136,15 @@ struct Config: Codable {
             return Config()
         }
         return cfg
+    }
+
+    /// setup.txt without comment lines, capped at 6000 characters; empty when unset.
+    static func loadSetup() -> String {
+        guard let text = try? String(contentsOf: setupURL, encoding: .utf8) else { return "" }
+        let kept = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+            .joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(kept.prefix(6000))
     }
 
     static func loadGlossary() -> [String] {

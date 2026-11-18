@@ -34,8 +34,40 @@ final class Recorder {
         engine.stop()
         isRecording = false
         lock.lock(); let samples = pcm; lock.unlock()
-        let seconds = Double(samples.count) / 2.0 / 16_000.0
-        return (Recorder.wav(pcm16: samples), seconds)
+        let trimmed = Recorder.trimTrailingSilence(samples)
+        let seconds = Double(trimmed.count) / 2.0 / 16_000.0
+        if trimmed.count < samples.count {
+            Log.write(String(format: "trimmed %.1fs of trailing silence", Double(samples.count - trimmed.count) / 32_000.0))
+        }
+        return (Recorder.wav(pcm16: trimmed), seconds)
+    }
+
+    /// Drops the quiet tail of a recording (the pause before you press stop), keeping
+    /// `keep` seconds after the last sound. Whisper fills long silence at the end with
+    /// lines from its subtitle training data ("Closed Captioning by …", "Thanks for
+    /// watching"); without the silence it has nothing to fill. The threshold follows the
+    /// room: three times the quietest stretch's level, at least about -46 dBFS.
+    static func trimTrailingSilence(_ pcm: Data, keep: Double = 0.5) -> Data {
+        let window = 320   // 20 ms at 16 kHz
+        let count = pcm.count / 2
+        guard count > window * 10 else { return pcm }
+        var rms: [Double] = []
+        rms.reserveCapacity(count / window)
+        pcm.withUnsafeBytes { raw in
+            let s = raw.bindMemory(to: Int16.self)
+            var i = 0
+            while i + window <= count {
+                var sum = 0.0
+                for j in i..<(i + window) { let v = Double(Int16(littleEndian: s[j])); sum += v * v }
+                rms.append((sum / Double(window)).squareRoot())
+                i += window
+            }
+        }
+        let floor = rms.sorted()[rms.count / 10]
+        let threshold = max(floor * 3, 160)
+        guard let last = rms.lastIndex(where: { $0 > threshold }) else { return pcm }
+        let end = min(count, (last + 1) * window + Int(keep * 16_000))
+        return pcm.prefix(end * 2)
     }
 
     private func consume(_ buffer: AVAudioPCMBuffer) {
