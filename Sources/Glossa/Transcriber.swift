@@ -57,7 +57,28 @@ struct Transcriber {
         }
     }
 
+    /// One quick pass for live typing: a single server (the fallback when it is chosen in
+    /// the menu), a short timeout, no switching. Live passes are disposable.
+    /// Asks for `verbose_json`, so servers that have them return segment timestamps
+    /// (Speaches, OpenAI); whisper.cpp's server returns one segment without times.
+    func quick(wav: Data, prompt: String, preferFallback: Bool) async throws -> (text: String, segments: [LiveTranscript.Segment]?) {
+        let server = preferFallback ? (fallback ?? primary) : primary
+        let json = try await request(wav: wav, prompt: prompt, to: server, timeout: 5, format: "verbose_json")
+        guard let text = json["text"] as? String else { throw TranscribeError.badResponse }
+        let segments = (json["segments"] as? [[String: Any]])?.compactMap { s -> LiveTranscript.Segment? in
+            guard let t = s["text"] as? String, let start = s["start"] as? Double, let end = s["end"] as? Double else { return nil }
+            return LiveTranscript.Segment(start: start, end: end, text: t)
+        }
+        return (text, segments?.isEmpty == false ? segments : nil)
+    }
+
     private func post(wav: Data, prompt: String, to server: Server, timeout: TimeInterval) async throws -> String {
+        let json = try await request(wav: wav, prompt: prompt, to: server, timeout: timeout, format: "json")
+        guard let text = json["text"] as? String else { throw TranscribeError.badResponse }
+        return text
+    }
+
+    private func request(wav: Data, prompt: String, to server: Server, timeout: TimeInterval, format: String) async throws -> [String: Any] {
         guard let url = URL(string: server.endpoint), url.host != nil else { throw TranscribeError.badEndpoint(server.endpoint) }
         let boundary = "----Glossa-\(UUID().uuidString)"
         var req = URLRequest(url: url)
@@ -71,7 +92,7 @@ struct Transcriber {
             body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n")
         }
         field("model", server.model)
-        field("response_format", "json")
+        field("response_format", format)
         field("temperature", "0.0")
         if !config.language.isEmpty { field("language", config.language) }
         if !prompt.isEmpty { field("prompt", prompt) }
@@ -85,9 +106,8 @@ struct Transcriber {
         guard (200..<300).contains(code) else {
             throw TranscribeError.http(code, String(data: data, encoding: .utf8) ?? "")
         }
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let text = json["text"] as? String else { throw TranscribeError.badResponse }
-        return text
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw TranscribeError.badResponse }
+        return json
     }
 }
 

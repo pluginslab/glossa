@@ -40,6 +40,11 @@ struct Config: Codable {
     var assistApiKey = ""
     /// Model for voice commands (an llm-router alias).
     var assistModel = "code"
+    /// A recording whose loudest moment stays below this (dBFS) is not sent: the microphone
+    /// delivered silence (wrong or stale input device, muted mic).
+    var silenceDB = -80.0
+    /// Live typing (Type While Speaking in the menu): seconds between passes over the audio so far.
+    var liveInterval = 0.8
 
     init() {}
 
@@ -65,6 +70,8 @@ struct Config: Codable {
         assistEndpoint = try c.decodeIfPresent(String.self, forKey: .assistEndpoint) ?? assistEndpoint
         assistApiKey = try c.decodeIfPresent(String.self, forKey: .assistApiKey) ?? assistApiKey
         assistModel = try c.decodeIfPresent(String.self, forKey: .assistModel) ?? assistModel
+        silenceDB = try c.decodeIfPresent(Double.self, forKey: .silenceDB) ?? silenceDB
+        liveInterval = try c.decodeIfPresent(Double.self, forKey: .liveInterval) ?? liveInterval
     }
 
     static let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/glossa")

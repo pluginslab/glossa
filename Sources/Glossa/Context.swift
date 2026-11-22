@@ -55,7 +55,7 @@ enum Context {
         return title
     }
 
-    private static func focusedElement() -> AXUIElement? {
+    static func focusedElement() -> AXUIElement? {
         let system = AXUIElementCreateSystemWide()
         var focusedRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,

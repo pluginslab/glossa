@@ -91,8 +91,28 @@ a volume you changed yourself in the meantime is left alone (`duckPercent`,
 `duckOnlyIfPlaying`).
 
 The menu-bar icon is a mic when idle, a red mic while recording (a red terminal for a voice
-command), and an ellipsis while transcribing. The menu has *Start Recording* for mouse-only use, the glossary, the config,
+command), and an ellipsis while transcribing. The menu has *Start Recording* for mouse-only use, *Microphone* to pick the input when several are connected (or follow the system default), the glossary, the config,
 and the log.
+
+### Type While Speaking
+
+With *Type While Speaking* checked in the menu, dictation appears as you talk instead of
+after you stop. About every 0.8 seconds (`liveInterval`) the audio so far goes to Whisper
+and the text in the app follows the answer: Glossa deletes only the part that changed
+(Backspace) and types the new ending, so the last few words settle as you speak. Words two
+passes in a row agree on stay put. A sentence Whisper closed with a full stop, question
+mark or exclamation mark is locked as soon as you say more after it: it is never retyped,
+and later passes only send the audio after it, so long dictations stay as quick as short
+ones. Pauses send nothing. When you stop, a last pass over the unlocked end gives the final
+text. (With a server that returns no timestamps, such as whisper.cpp's, each pass sends the
+whole recording and skips the locked sentences.)
+
+Backspaces are only safe while the cursor is where Glossa left it. If you click into another
+field or app, or press a key yourself while talking, Glossa stops editing for that recording
+and puts the full final text on the clipboard, with a notice. It works best in terminals and
+plain text fields; apps that autocomplete or reformat as you type can confuse it. Voice
+commands always wait for the whole sentence. Each recording sends several requests to the
+server instead of one.
 
 ### Voice commands
 
@@ -169,6 +189,8 @@ glossary is sent. `"useContext": false` turns it off.
 | `duckPercent` | `10` | lower the output volume by this many points while recording; `0` disables it |
 | `duckOnlyIfPlaying` | `true` | only when something is playing on the output device |
 | `debug` | `false` | log Fn and special-key events |
+| `liveInterval` | `0.8` | seconds between passes with *Type While Speaking* on |
+| `silenceDB` | `-80` | a recording that never gets louder than this (dBFS) is not sent: the mic delivered silence |
 | `assistEndpoint` | `""` | chat completions URL for voice commands; empty derives it from `endpoint` |
 | `assistApiKey` | `""` | its key; empty uses `apiKey` |
 | `assistModel` | `code` | the model (router alias) that writes the command |

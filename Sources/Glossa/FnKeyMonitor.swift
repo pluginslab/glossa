@@ -11,6 +11,8 @@ final class FnKeyMonitor {
     enum Source { case fn, micKey }
 
     var onAction: ((Action) -> Void)?
+    /// A key you pressed or a click (not one Glossa typed); live typing stops editing on it.
+    var onUserKey: ((String) -> Void)?
     var debug = false
     /// Virtual key code of the keyboard's microphone/dictation key (176 on Apple keyboards). 0 disables it.
     var micKeyCode: Int64 = 176
@@ -40,6 +42,8 @@ final class FnKeyMonitor {
             (1 << CGEventType.flagsChanged.rawValue) |
             (1 << CGEventType.keyDown.rawValue) |
             (1 << CGEventType.keyUp.rawValue) |
+            (1 << CGEventType.leftMouseDown.rawValue) |
+            (1 << CGEventType.rightMouseDown.rawValue) |
             (1 << systemDefinedType)
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(
@@ -68,10 +72,21 @@ final class FnKeyMonitor {
             Log.write("event tap re-enabled after \(type.rawValue)")
             return false
         }
+        if type == .leftMouseDown || type == .rightMouseDown {
+            // The menu bar (Glossa's own icon, to stop from the menu) doesn't move the text cursor.
+            if let onUserKey, !Self.inMenuBar(event.location) {
+                let p = event.location
+                let what = "\(type == .leftMouseDown ? "click" : "right-click") at \(Int(p.x)),\(Int(p.y))"
+                DispatchQueue.main.async { onUserKey(what) }
+            }
+            return false
+        }
         if type.rawValue == systemDefinedType {
             return handleSystemDefined(event)
         }
         if type == .keyDown || type == .keyUp {
+            // Glossa's own live typing: not a key press to react to.
+            if event.getIntegerValueField(.eventSourceUserData) == LiveTyper.marker { return false }
             let keycode = event.getIntegerValueField(.keyboardEventKeycode)
             // Only special keys (F-keys, media keys) are logged, never typed characters.
             if debug, keycode >= 96 { Log.write("\(type == .keyDown ? "keyDown" : "keyUp") keycode=\(keycode) flags=\(event.flags.rawValue)") }
@@ -81,6 +96,11 @@ final class FnKeyMonitor {
                 return true
             }
             if type == .keyDown, fnDownAt != nil { otherKeyDuringFn = true; cancelHold() }
+            if type == .keyDown, let onUserKey {
+                // The key code only, never the character typed.
+                let what = "key code \(keycode), flags \(String(event.flags.rawValue, radix: 16)), source \(event.getIntegerValueField(.eventSourceUnixProcessID))"
+                DispatchQueue.main.async { onUserKey(what) }
+            }
             return false
         }
         guard type == .flagsChanged else { return false }
@@ -93,6 +113,18 @@ final class FnKeyMonitor {
         }
         if event.flags.contains(.maskSecondaryFn) { keyDown(.fn, shift: event.flags.contains(.maskShift)) } else { keyUp(.fn) }
         return false
+    }
+
+    /// `p` in global display coordinates (origin at the top left of the main screen):
+    /// within the menu bar's height from the top of whichever screen it is on.
+    private static func inMenuBar(_ p: CGPoint) -> Bool {
+        guard let mainHeight = NSScreen.screens.first?.frame.height else { return false }
+        let bar = NSStatusBar.system.thickness + 6
+        return NSScreen.screens.contains { screen in
+            let f = screen.frame
+            let top = mainHeight - f.maxY          // this screen's top edge, in CG coordinates
+            return p.x >= f.minX && p.x < f.maxX && p.y >= top && p.y < top + bar
+        }
     }
 
     /// Media keys (volume, brightness, the microphone/dictation key) arrive as NSSystemDefined subtype 8.
